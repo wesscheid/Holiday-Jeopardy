@@ -40,9 +40,9 @@
     </script>
     <style>
       /* 
-         Vite serves everything in the /public folder from the root (/).
-         Using /Geoparody-Regular.woff ensures the bundler doesn't try to
-         process the binary file as code.
+         Static assets placed in the /public folder are served at the root (/).
+         Using /Geoparody-Regular.woff ensures the browser fetches the file 
+         without Vite attempting to process the binary content.
       */
       @font-face {
         font-family: 'GeoparodyLocal';
@@ -61,7 +61,7 @@
       }
       
       .font-geopardy {
-        /* Bebas Neue is a high-fidelity fallback that mirrors the Jeopardy font perfectly. */
+        /* Bebas Neue is a robust fallback that keeps the Jeopardy style if the font is loading. */
         font-family: 'GeoparodyLocal', 'Bebas Neue', sans-serif !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
