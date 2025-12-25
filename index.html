@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Holiday Jeopardy</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Bebas+Neue&family=Montserrat:wght@600&family=Mountains+of+Christmas:wght@400;700&family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
+              'vibes': ['"Great Vibes"', 'cursive'],
+              'bebas': ['"Bebas Neue"', 'sans-serif'],
+              'geopardy': ['"Bebas Neue"', 'sans-serif'],
+              'montserrat': ['Montserrat', 'sans-serif'],
               'christmas': ['"Mountains of Christmas"', 'cursive'],
               'slab': ['"Roboto Slab"', 'serif'],
             },
@@ -35,12 +39,36 @@
       }
     </script>
     <style>
+      /* 
+         Static assets placed in the /public folder are served at the root (/).
+         Using /Geoparody-Regular.woff ensures the browser fetches the file 
+         without Vite attempting to process the binary content.
+      */
+      @font-face {
+        font-family: 'GeoparodyLocal';
+        src: url('/Geoparody-Regular.woff') format('woff');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
       body {
         background-color: #022c22;
         color: white;
         margin: 0;
         padding: 0;
+        overflow-x: hidden;
       }
+      
+      .font-geopardy {
+        /* Bebas Neue is a robust fallback that keeps the Jeopardy style if the font is loading. */
+        font-family: 'GeoparodyLocal', 'Bebas Neue', sans-serif !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8), 
+                     4px 4px 8px rgba(0, 0, 0, 0.5);
+      }
+
       .perspective-1000 {
         perspective: 1000px;
       }
@@ -52,6 +80,13 @@
       }
       .preserve-3d {
         transform-style: preserve-3d;
+      }
+      .hyphenate {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        -webkit-hyphens: auto;
+        -ms-hyphens: auto;
+        hyphens: auto;
       }
     </style>
   <script type="importmap">
@@ -70,6 +105,6 @@
 </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>

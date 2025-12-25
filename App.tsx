@@ -7,7 +7,8 @@ import ScoreBoard from './components/ScoreBoard';
 import FinalJeopardy from './components/FinalJeopardy';
 import GameOver from './components/GameOver';
 import Snowfall from './components/Snowfall';
-import { Snowflake, Gift, Loader2, Play, Plus, Trash2, ArrowRight, Maximize, Minimize } from 'lucide-react';
+import { FALLBACK_GAME_DATA } from './constants';
+import { Gift, Loader2, Play, Plus, Trash2, ArrowRight, Maximize, Minimize, AlertCircle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.SETUP);
@@ -15,6 +16,7 @@ const App: React.FC = () => {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [customTopic, setCustomTopic] = useState("Christmas Traditions");
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [teams, setTeams] = useState<Team[]>([
     { id: 1, name: "The Elves", score: 0 },
@@ -45,10 +47,24 @@ const App: React.FC = () => {
   };
 
   const startGame = async () => {
+    setError(null);
     setGameState(GameState.LOADING);
-    const data = await generateGameData(customTopic);
-    setGameData(data);
-    setGameState(GameState.PLAYING);
+    try {
+      const data = await generateGameData(customTopic);
+      setGameData(data);
+      setGameState(GameState.PLAYING);
+    } catch (err: any) {
+      console.error("Game generation failed:", err);
+      const isApiKeyMissing = err.message?.includes("API Key") || (typeof process !== 'undefined' && !process.env.API_KEY);
+      
+      const errorMsg = isApiKeyMissing
+        ? "API Key missing in build. Using fallback holiday board. (Check GitHub Secrets!)"
+        : "Failed to build board for this topic. Using holiday defaults.";
+      
+      setError(errorMsg);
+      setGameData(JSON.parse(JSON.stringify(FALLBACK_GAME_DATA)));
+      setGameState(GameState.PLAYING);
+    }
   };
 
   const handleQuestionClick = (question: Question) => {
@@ -57,7 +73,6 @@ const App: React.FC = () => {
 
   const handleCloseModal = () => {
     if (activeQuestion && gameData) {
-      // Mark as answered locally
       const newData = { ...gameData };
       for (const cat of newData.categories) {
         const qIndex = cat.questions.findIndex(q => q.id === activeQuestion.id);
@@ -96,6 +111,7 @@ const App: React.FC = () => {
   const resetGame = () => {
      setGameState(GameState.SETUP);
      setGameData(null);
+     setError(null);
      setTeams([
         { id: 1, name: "The Elves", score: 0 },
         { id: 2, name: "The Reindeer", score: 0 }
@@ -115,23 +131,28 @@ const App: React.FC = () => {
         {isFullScreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
       </button>
 
-      {/* Main Container */}
       <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col min-h-screen">
         
-        {/* Header - Only show in Setup, Loading, and Playing */}
         {gameState !== GameState.GAME_OVER && (
-          <header className="text-center mb-8 relative">
+          <header className="text-center mb-12 relative">
              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-32 bg-red-900/20 blur-3xl rounded-full -z-10"></div>
-             <h1 className="font-christmas text-6xl md:text-7xl text-hol-gold drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-               Holiday Jeopardy
+             <h1 className="flex flex-col md:flex-row items-center justify-center gap-x-2 gap-y-0 leading-none">
+               <span className="font-vibes text-7xl md:text-9xl text-hol-gold drop-shadow-lg pr-4">Holiday</span>
+               <span className="font-geopardy text-5xl md:text-8xl text-white tracking-[0.1em] drop-shadow-lg md:mt-8 uppercase">Jeopardy</span>
              </h1>
              {gameState === GameState.PLAYING && (
-               <p className="text-gray-300 mt-2 font-slab text-lg">Select a clue to begin</p>
+               <p className="text-gray-300 mt-6 font-montserrat font-semibold text-lg uppercase tracking-[0.3em] opacity-80">Select a clue to begin</p>
              )}
           </header>
         )}
 
-        {/* SETUP PHASE */}
+        {error && gameState === GameState.PLAYING && (
+          <div className="mb-6 mx-auto max-w-2xl bg-red-900/40 border border-red-500/50 p-3 rounded-lg flex items-center gap-3 text-red-100 text-sm animate-in fade-in slide-in-from-top-4">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />
+            <p>{error}</p>
+          </div>
+        )}
+
         {gameState === GameState.SETUP && (
           <div className="flex-1 flex flex-col items-center justify-center animate-in zoom-in duration-500">
             <div className="bg-hol-red/10 border border-hol-gold/30 p-8 rounded-2xl backdrop-blur-sm max-w-lg w-full shadow-2xl">
@@ -141,28 +162,21 @@ const App: React.FC = () => {
               <h2 className="text-3xl font-slab font-bold text-center mb-6">Start New Game</h2>
               
               <div className="mb-6">
-                <label className="block text-sm font-bold mb-2 text-hol-gold uppercase tracking-wider">Game Topic</label>
+                <label className="block text-sm font-bold mb-2 text-hol-gold uppercase tracking-wider font-montserrat">Game Topic</label>
                 <input 
                   type="text" 
                   value={customTopic}
                   onChange={(e) => setCustomTopic(e.target.value)}
-                  className="w-full bg-black/40 border border-hol-gold/50 rounded-lg p-3 text-white focus:outline-none focus:border-hol-gold focus:ring-1 focus:ring-hol-gold transition-all"
+                  className="w-full bg-black/40 border border-hol-gold/50 rounded-lg p-3 text-white focus:outline-none focus:border-hol-gold focus:ring-1 focus:ring-hol-gold transition-all font-montserrat"
                   placeholder="e.g. Christmas Movies, Holiday Food..."
                 />
               </div>
 
               <div className="mb-8">
-                 <div className="flex justify-between items-center mb-2">
-                    <label className="block text-sm font-bold text-hol-gold uppercase tracking-wider">Teams</label>
-                    <button 
-                        onClick={addTeam}
-                        disabled={teams.length >= 5}
-                        className="text-xs flex items-center gap-1 bg-hol-green/20 hover:bg-hol-green text-hol-green hover:text-white border border-hol-green px-3 py-1 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        <Plus className="w-3 h-3" /> Add Team
-                    </button>
+                 <div className="mb-2">
+                    <label className="block text-sm font-bold text-hol-gold uppercase tracking-wider font-montserrat">Teams</label>
                  </div>
-                 <div className="space-y-3">
+                 <div className="space-y-3 mb-4">
                     {teams.map((team, idx) => (
                        <div key={team.id} className="flex gap-2 animate-in slide-in-from-left-2 duration-300">
                          <input
@@ -173,7 +187,7 @@ const App: React.FC = () => {
                             newTeams[idx].name = e.target.value;
                             setTeams(newTeams);
                           }}
-                          className="flex-1 bg-black/40 border border-gray-600 rounded-lg p-2 text-sm focus:border-hol-gold focus:outline-none text-white"
+                          className="flex-1 bg-black/40 border border-gray-600 rounded-lg p-2 text-sm focus:border-hol-gold focus:outline-none text-white font-montserrat"
                           placeholder="Team Name"
                          />
                          {teams.length > 1 && (
@@ -188,11 +202,18 @@ const App: React.FC = () => {
                        </div>
                     ))}
                  </div>
+                 <button 
+                    onClick={addTeam}
+                    disabled={teams.length >= 5}
+                    className="w-full text-xs flex items-center justify-center gap-2 bg-hol-green/10 hover:bg-hol-green/20 text-hol-green border border-hol-green/30 px-3 py-2 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed group font-montserrat uppercase font-semibold"
+                 >
+                    <Plus className="w-3 h-3 group-hover:scale-125 transition-transform" /> Add Another Team
+                 </button>
               </div>
 
               <button 
                 onClick={startGame}
-                className="w-full bg-gradient-to-r from-hol-red to-red-600 hover:from-red-600 hover:to-hol-red text-white font-bold py-4 rounded-xl shadow-lg transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group"
+                className="w-full bg-gradient-to-r from-hol-red to-red-600 hover:from-red-600 hover:to-hol-red text-white font-bold py-4 rounded-xl shadow-lg transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group font-montserrat uppercase tracking-widest"
               >
                 <Play className="w-5 h-5 fill-current" />
                 Build Game Board
@@ -201,44 +222,36 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* LOADING PHASE */}
         {gameState === GameState.LOADING && (
           <div className="flex-1 flex flex-col items-center justify-center">
             <Loader2 className="w-16 h-16 text-hol-gold animate-spin mb-4" />
-            <h2 className="text-2xl font-slab font-bold animate-pulse">Asking Santa's Elves (Gemini)...</h2>
-            <p className="text-gray-400 mt-2">Generating categories and clues</p>
+            <h2 className="text-2xl font-slab font-bold animate-pulse uppercase tracking-wider">Asking Santa's Elves...</h2>
+            <p className="text-gray-400 mt-2 text-center italic font-montserrat">Crafting questions about "{customTopic}"</p>
           </div>
         )}
 
-        {/* PLAYING PHASE */}
         {gameState === GameState.PLAYING && gameData && (
           <div className="flex-1 flex flex-col animate-in fade-in duration-700">
-            
             <GameBoard 
               data={gameData} 
               onQuestionClick={handleQuestionClick}
             />
-
-            {/* Final Jeopardy Trigger */}
             {checkAllQuestionsAnswered() && (
-               <div className="my-6 flex justify-center animate-in bounce-in duration-1000">
+               <div className="my-10 flex justify-center animate-in bounce-in duration-1000">
                   <button 
                      onClick={() => setGameState(GameState.FINAL_JEOPARDY)}
-                     className="bg-gradient-to-r from-hol-gold to-yellow-600 hover:from-yellow-400 hover:to-yellow-700 text-hol-dark font-bold text-2xl py-4 px-10 rounded-full shadow-2xl transform hover:scale-105 transition-all flex items-center gap-3 border-4 border-white/20"
+                     className="bg-gradient-to-r from-hol-gold to-yellow-600 hover:from-yellow-400 hover:to-yellow-700 text-hol-dark font-bold text-2xl py-5 px-12 rounded-full shadow-2xl transform hover:scale-105 transition-all flex items-center gap-4 border-4 border-white/30 font-montserrat uppercase tracking-widest"
                   >
                      Go to Final Jeopardy <ArrowRight className="w-8 h-8" />
                   </button>
                </div>
             )}
-
             <div className="mt-auto pt-8">
               <ScoreBoard teams={teams} onUpdateScore={handleUpdateScore} />
             </div>
-
           </div>
         )}
 
-        {/* FINAL JEOPARDY */}
         {gameState === GameState.FINAL_JEOPARDY && gameData && (
            <FinalJeopardy 
               data={gameData.finalJeopardy}
@@ -248,12 +261,10 @@ const App: React.FC = () => {
            />
         )}
 
-        {/* GAME OVER */}
         {gameState === GameState.GAME_OVER && (
            <GameOver teams={teams} onRestart={resetGame} />
         )}
 
-        {/* MODAL */}
         {activeQuestion && (
           <ActiveClue 
             question={activeQuestion}
@@ -262,7 +273,6 @@ const App: React.FC = () => {
             onAwardPoints={handleUpdateScore}
           />
         )}
-
       </div>
     </div>
   );

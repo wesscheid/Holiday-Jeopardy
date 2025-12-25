@@ -1,29 +1,47 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { GameData } from "../types";
-import { FALLBACK_GAME_DATA } from "../constants";
 
 const getClient = () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key not found");
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    throw new Error("API Key is missing. Please set the API_KEY secret in your deployment settings.");
   }
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateGameData = async (customTopic: string = "Christmas and Holidays"): Promise<GameData> => {
+export const generateGameData = async (customTopic: string = "Christmas Traditions"): Promise<GameData> => {
   try {
     const ai = getClient();
+    // Switched to Flash to resolve 429 Quota issues with Pro model
     const modelId = "gemini-3-flash-preview"; 
+
+    const prompt = `Generate a full Jeopardy game board for the topic: "${customTopic}".
+      Required JSON structure:
+      {
+        "categories": [
+          {
+            "title": "Category Name",
+            "questions": [
+              {"value": 200, "clue": "Statement...", "answer": "What is...?"},
+              ... (total 5 questions: 200, 400, 600, 800, 1000)
+            ]
+          }
+          ... (total 5 categories)
+        ],
+        "finalJeopardy": {
+          "category": "Final Category",
+          "clue": "Final Clue",
+          "answer": "Final Answer"
+        }
+      }
+      Strictly follow the topic "${customTopic}". Return ONLY valid JSON.`;
 
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: `Generate a Jeopardy-style game board about "${customTopic}". 
-      1. Create exactly 5 categories. 
-      2. Each category must have exactly 5 questions with dollar values 200, 400, 600, 800, 1000.
-      3. Create 1 "Final Jeopardy" question which should be slightly more difficult.
-      Ensure the "clue" is the hint given to the player, and "answer" is the correct response (e.g., in the form of a question).
-      Return ONLY the JSON.`,
+      contents: prompt,
       config: {
+        // Disabling thinking budget for Flash to minimize quota usage and latency
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -65,16 +83,22 @@ export const generateGameData = async (customTopic: string = "Christmas and Holi
       },
     });
 
-    if (response.text) {
-      const data = JSON.parse(response.text) as GameData;
+    const text = response.text;
+    if (text) {
+      let cleanJson = text.trim();
+      if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
+      }
       
-      // Post-process to ensure IDs and state are correct
+      const data = JSON.parse(cleanJson) as GameData;
+      const timestamp = Date.now();
+      
       data.categories = data.categories.map((cat, catIdx) => ({
         ...cat,
-        id: `cat-${catIdx}`,
-        questions: cat.questions.map((q, qIdx) => ({
+        id: `cat-${catIdx}-${timestamp}`,
+        questions: (cat.questions || []).map((q, qIdx) => ({
           ...q,
-          id: `q-${catIdx}-${qIdx}`,
+          id: `q-${catIdx}-${qIdx}-${timestamp}`,
           isAnswered: false
         }))
       }));
@@ -82,12 +106,11 @@ export const generateGameData = async (customTopic: string = "Christmas and Holi
       return data;
     }
     
-    throw new Error("Empty response from AI");
+    throw new Error("No response text returned.");
 
   } catch (error) {
-    console.error("Failed to generate game data", error);
-    // Fallback if API fails or key is missing
-    return JSON.parse(JSON.stringify(FALLBACK_GAME_DATA)); 
+    console.error("Board generation failed:", error);
+    throw error;
   }
 };
 
@@ -98,23 +121,18 @@ export const generateHint = async (clue: string, answer: string): Promise<string
     
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: `You are a Jeopardy host helper. 
-      Clue: "${clue}"
-      Answer: "${answer}"
-      Task: Provide a helpful but subtle hint for the players who are stuck. Do not use the answer word itself. Keep it short (max 15 words).`,
+      contents: `Short hint (max 10 words) for: Clue: "${clue}", Answer: "${answer}". Do not reveal the answer.`,
     });
 
     return response.text || "No hint available.";
   } catch (error) {
-    console.error("Hint generation failed", error);
-    return "Could not generate a hint at this time.";
+    return "Think about the theme!";
   }
 };
 
 export const speakText = async (text: string): Promise<AudioBuffer | null> => {
   try {
     const ai = getClient();
-    // Using a valid TTS model
     const modelId = "gemini-2.5-flash-preview-tts";
 
     const response = await ai.models.generateContent({
@@ -124,7 +142,7 @@ export const speakText = async (text: string): Promise<AudioBuffer | null> => {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Fenrir' }, // Deep, "host-like" voice
+            prebuiltVoiceConfig: { voiceName: 'Fenrir' }, 
           },
         },
       },
@@ -133,7 +151,6 @@ export const speakText = async (text: string): Promise<AudioBuffer | null> => {
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) return null;
 
-    // Use PCM decoding as per guidelines
     const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
     const bytes = decode(base64Audio);
     return await decodeAudioData(bytes, outputAudioContext, 24000, 1);
@@ -143,8 +160,6 @@ export const speakText = async (text: string): Promise<AudioBuffer | null> => {
     return null;
   }
 };
-
-// Helper functions for PCM decoding as per guidelines
 
 function decode(base64: string) {
   const binaryString = atob(base64);
