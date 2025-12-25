@@ -140,7 +140,7 @@ const App: React.FC = () => {
              {/* Replaced Text Headline with Image - Corrected path casing */}
              <div className="flex justify-center items-center mb-4">
                <img 
-                 src="./holidayJeopardy.png" 
+                 src="holidayJeopardy.png" 
                  alt="Holiday Jeopardy" 
                  className="max-w-[90%] md:max-w-2xl h-auto object-contain drop-shadow-2xl"
                />
