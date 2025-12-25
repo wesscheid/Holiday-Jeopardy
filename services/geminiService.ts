@@ -12,25 +12,36 @@ const getClient = () => {
 export const generateGameData = async (customTopic: string = "Christmas Traditions"): Promise<GameData> => {
   try {
     const ai = getClient();
-    // Using Pro for better following of custom topic instructions
-    const modelId = "gemini-3-pro-preview"; 
+    // Switched to Flash to resolve 429 Quota issues with Pro model
+    const modelId = "gemini-3-flash-preview"; 
 
-    const prompt = `Task: Generate a completely new and unique Jeopardy-style game board based on the topic: "${customTopic}". 
-      
-      Requirements:
-      1. Create exactly 5 distinct categories that are highly relevant to "${customTopic}". 
-      2. Each category must contain 5 clues with values 200, 400, 600, 800, 1000.
-      3. Create 1 "Final Jeopardy" clue.
-      4. Clues should be challenging but fun.
-      5. Output MUST be valid JSON.
-      
-      Ensure the clues and categories are strictly about "${customTopic}" and not general Christmas questions unless the topic is general.`;
+    const prompt = `Generate a full Jeopardy game board for the topic: "${customTopic}".
+      Required JSON structure:
+      {
+        "categories": [
+          {
+            "title": "Category Name",
+            "questions": [
+              {"value": 200, "clue": "Statement...", "answer": "What is...?"},
+              ... (total 5 questions: 200, 400, 600, 800, 1000)
+            ]
+          }
+          ... (total 5 categories)
+        ],
+        "finalJeopardy": {
+          "category": "Final Category",
+          "clue": "Final Clue",
+          "answer": "Final Answer"
+        }
+      }
+      Strictly follow the topic "${customTopic}". Return ONLY valid JSON.`;
 
     const response = await ai.models.generateContent({
       model: modelId,
       contents: prompt,
       config: {
-        thinkingConfig: { thinkingBudget: 4000 },
+        // Disabling thinking budget for Flash to minimize quota usage and latency
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -95,7 +106,7 @@ export const generateGameData = async (customTopic: string = "Christmas Traditio
       return data;
     }
     
-    throw new Error("No text returned from AI.");
+    throw new Error("No response text returned.");
 
   } catch (error) {
     console.error("Board generation failed:", error);
@@ -110,7 +121,7 @@ export const generateHint = async (clue: string, answer: string): Promise<string
     
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: `Provide a short, subtle hint (max 12 words) for this Jeopardy clue: "${clue}". The answer is "${answer}". Do not reveal the answer.`,
+      contents: `Short hint (max 10 words) for: Clue: "${clue}", Answer: "${answer}". Do not reveal the answer.`,
     });
 
     return response.text || "No hint available.";
