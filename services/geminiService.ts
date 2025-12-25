@@ -4,7 +4,7 @@ import { GameData } from "../types";
 const getClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey || apiKey === "undefined" || apiKey === "") {
-    throw new Error("API Key is missing or undefined. Ensure it's set in your deployment environment secrets.");
+    throw new Error("API Key is missing. Please set the API_KEY secret in your deployment settings.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -12,17 +12,19 @@ const getClient = () => {
 export const generateGameData = async (customTopic: string = "Christmas Traditions"): Promise<GameData> => {
   try {
     const ai = getClient();
-    // Using Pro for complex JSON structure generation
+    // Using Pro for better following of custom topic instructions
     const modelId = "gemini-3-pro-preview"; 
 
-    const prompt = `Generate a full Jeopardy-style game board specifically about the topic: "${customTopic}". 
+    const prompt = `Task: Generate a completely new and unique Jeopardy-style game board based on the topic: "${customTopic}". 
+      
       Requirements:
-      1. Create exactly 5 unique categories related to "${customTopic}". 
-      2. Each category must have exactly 5 questions with dollar values 200, 400, 600, 800, 1000.
-      3. Create 1 "Final Jeopardy" question (category, clue, and answer) about "${customTopic}".
-      4. Clue format: A statement like "This reindeer is famous for his red nose."
-      5. Answer format: A question like "Who is Rudolph?"
-      Return ONLY a raw JSON object. Do not include any extra text.`;
+      1. Create exactly 5 distinct categories that are highly relevant to "${customTopic}". 
+      2. Each category must contain 5 clues with values 200, 400, 600, 800, 1000.
+      3. Create 1 "Final Jeopardy" clue.
+      4. Clues should be challenging but fun.
+      5. Output MUST be valid JSON.
+      
+      Ensure the clues and categories are strictly about "${customTopic}" and not general Christmas questions unless the topic is general.`;
 
     const response = await ai.models.generateContent({
       model: modelId,
@@ -73,15 +75,13 @@ export const generateGameData = async (customTopic: string = "Christmas Traditio
     const text = response.text;
     if (text) {
       let cleanJson = text.trim();
-      // Remove any markdown formatting if the model persists in adding it
       if (cleanJson.startsWith('```')) {
         cleanJson = cleanJson.replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
       }
       
       const data = JSON.parse(cleanJson) as GameData;
-      
-      // Ensure IDs and state are properly initialized with unique values
       const timestamp = Date.now();
+      
       data.categories = data.categories.map((cat, catIdx) => ({
         ...cat,
         id: `cat-${catIdx}-${timestamp}`,
@@ -95,10 +95,10 @@ export const generateGameData = async (customTopic: string = "Christmas Traditio
       return data;
     }
     
-    throw new Error("Received empty response from the AI model.");
+    throw new Error("No text returned from AI.");
 
   } catch (error) {
-    console.error("Game generation error:", error);
+    console.error("Board generation failed:", error);
     throw error;
   }
 };
@@ -110,16 +110,12 @@ export const generateHint = async (clue: string, answer: string): Promise<string
     
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: `You are a Jeopardy host helper. 
-      Clue: "${clue}"
-      Answer: "${answer}"
-      Task: Provide a helpful but subtle hint for the players who are stuck. Do not use the answer word itself. Keep it short (max 15 words).`,
+      contents: `Provide a short, subtle hint (max 12 words) for this Jeopardy clue: "${clue}". The answer is "${answer}". Do not reveal the answer.`,
     });
 
     return response.text || "No hint available.";
   } catch (error) {
-    console.error("Hint generation failed:", error);
-    return "Could not generate a hint.";
+    return "Think about the theme!";
   }
 };
 
