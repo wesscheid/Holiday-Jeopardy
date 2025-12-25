@@ -252,7 +252,7 @@ const App: React.FC = () => {
                   </button>
                </div>
             )}
-            <div className="mt-2">
+            <div className="mt-6">
               <ScoreBoard teams={teams} onUpdateScore={handleUpdateScore} />
             </div>
           </div>
