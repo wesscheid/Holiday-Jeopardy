@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
     define: {
       // Define process.env.API_KEY so the frontend code can access the key
       // injected during the build process or from the .env file.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // Falls back to the provided key if env variable is missing.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || "AIzaSyCcT_LQqi_VWpc8ZSsO4XT38sDlWBCmY_w"),
     },
   };
 });
