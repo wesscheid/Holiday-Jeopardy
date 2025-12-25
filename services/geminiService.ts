@@ -17,12 +17,14 @@ export const generateGameData = async (customTopic: string = "Christmas and Holi
 
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: `Generate a Jeopardy-style game board about "${customTopic}". 
-      1. Create exactly 5 categories. 
+      contents: `Generate a full Jeopardy-style game board specifically about the topic: "${customTopic}". 
+      Requirements:
+      1. Create exactly 5 unique categories related to "${customTopic}". 
       2. Each category must have exactly 5 questions with dollar values 200, 400, 600, 800, 1000.
-      3. Create 1 "Final Jeopardy" question which should be slightly more difficult.
-      Ensure the "clue" is the hint given to the player, and "answer" is the correct response (e.g., in the form of a question).
-      Return ONLY the JSON.`,
+      3. Create 1 "Final Jeopardy" question (category, clue, and answer) about "${customTopic}".
+      4. Clue format: "This character..." or "This event...".
+      5. Answer format: "Who is..." or "What is...".
+      Return ONLY a raw JSON object. Do not include markdown formatting or backticks.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -66,13 +68,19 @@ export const generateGameData = async (customTopic: string = "Christmas and Holi
     });
 
     if (response.text) {
-      const data = JSON.parse(response.text) as GameData;
+      // Clean potential markdown backticks if AI ignores instruction
+      let cleanJson = response.text.trim();
+      if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
+      }
+      
+      const data = JSON.parse(cleanJson) as GameData;
       
       // Post-process to ensure IDs and state are correct
       data.categories = data.categories.map((cat, catIdx) => ({
         ...cat,
         id: `cat-${catIdx}`,
-        questions: cat.questions.map((q, qIdx) => ({
+        questions: (cat.questions || []).map((q, qIdx) => ({
           ...q,
           id: `q-${catIdx}-${qIdx}`,
           isAnswered: false
@@ -86,8 +94,10 @@ export const generateGameData = async (customTopic: string = "Christmas and Holi
 
   } catch (error) {
     console.error("Failed to generate game data", error);
-    // Fallback if API fails or key is missing
-    return JSON.parse(JSON.stringify(FALLBACK_GAME_DATA)); 
+    // Rethrow so the UI can handle the error state if desired, 
+    // or return a special flag. For now, we return fallback but we'll 
+    // handle the display in App.tsx.
+    throw error;
   }
 };
 
@@ -114,7 +124,6 @@ export const generateHint = async (clue: string, answer: string): Promise<string
 export const speakText = async (text: string): Promise<AudioBuffer | null> => {
   try {
     const ai = getClient();
-    // Using a valid TTS model
     const modelId = "gemini-2.5-flash-preview-tts";
 
     const response = await ai.models.generateContent({
@@ -124,7 +133,7 @@ export const speakText = async (text: string): Promise<AudioBuffer | null> => {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Fenrir' }, // Deep, "host-like" voice
+            prebuiltVoiceConfig: { voiceName: 'Fenrir' }, 
           },
         },
       },
@@ -133,7 +142,6 @@ export const speakText = async (text: string): Promise<AudioBuffer | null> => {
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) return null;
 
-    // Use PCM decoding as per guidelines
     const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
     const bytes = decode(base64Audio);
     return await decodeAudioData(bytes, outputAudioContext, 24000, 1);
@@ -143,8 +151,6 @@ export const speakText = async (text: string): Promise<AudioBuffer | null> => {
     return null;
   }
 };
-
-// Helper functions for PCM decoding as per guidelines
 
 function decode(base64: string) {
   const binaryString = atob(base64);

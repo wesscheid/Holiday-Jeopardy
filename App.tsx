@@ -7,7 +7,8 @@ import ScoreBoard from './components/ScoreBoard';
 import FinalJeopardy from './components/FinalJeopardy';
 import GameOver from './components/GameOver';
 import Snowfall from './components/Snowfall';
-import { Snowflake, Gift, Loader2, Play, Plus, Trash2, ArrowRight, Maximize, Minimize } from 'lucide-react';
+import { FALLBACK_GAME_DATA } from './constants';
+import { Snowflake, Gift, Loader2, Play, Plus, Trash2, ArrowRight, Maximize, Minimize, AlertCircle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.SETUP);
@@ -15,6 +16,7 @@ const App: React.FC = () => {
   const [activeQuestion, setActiveQuestion] = useState<Question | null>(null);
   const [customTopic, setCustomTopic] = useState("Christmas Traditions");
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [teams, setTeams] = useState<Team[]>([
     { id: 1, name: "The Elves", score: 0 },
@@ -45,10 +47,18 @@ const App: React.FC = () => {
   };
 
   const startGame = async () => {
+    setError(null);
     setGameState(GameState.LOADING);
-    const data = await generateGameData(customTopic);
-    setGameData(data);
-    setGameState(GameState.PLAYING);
+    try {
+      const data = await generateGameData(customTopic);
+      setGameData(data);
+      setGameState(GameState.PLAYING);
+    } catch (err) {
+      console.error("Game generation failed, using fallback:", err);
+      setError("AI generation failed (likely API key missing in build). Falling back to default holiday questions.");
+      setGameData(JSON.parse(JSON.stringify(FALLBACK_GAME_DATA)));
+      setGameState(GameState.PLAYING);
+    }
   };
 
   const handleQuestionClick = (question: Question) => {
@@ -57,7 +67,6 @@ const App: React.FC = () => {
 
   const handleCloseModal = () => {
     if (activeQuestion && gameData) {
-      // Mark as answered locally
       const newData = { ...gameData };
       for (const cat of newData.categories) {
         const qIndex = cat.questions.findIndex(q => q.id === activeQuestion.id);
@@ -96,6 +105,7 @@ const App: React.FC = () => {
   const resetGame = () => {
      setGameState(GameState.SETUP);
      setGameData(null);
+     setError(null);
      setTeams([
         { id: 1, name: "The Elves", score: 0 },
         { id: 2, name: "The Reindeer", score: 0 }
@@ -115,10 +125,8 @@ const App: React.FC = () => {
         {isFullScreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
       </button>
 
-      {/* Main Container */}
       <div className="relative z-10 container mx-auto px-4 py-8 flex flex-col min-h-screen">
         
-        {/* Header - Only show in Setup, Loading, and Playing */}
         {gameState !== GameState.GAME_OVER && (
           <header className="text-center mb-8 relative">
              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-32 bg-red-900/20 blur-3xl rounded-full -z-10"></div>
@@ -131,7 +139,13 @@ const App: React.FC = () => {
           </header>
         )}
 
-        {/* SETUP PHASE */}
+        {error && gameState === GameState.PLAYING && (
+          <div className="mb-6 mx-auto max-w-2xl bg-red-900/40 border border-red-500/50 p-3 rounded-lg flex items-center gap-3 text-red-100 text-sm animate-in fade-in slide-in-from-top-4">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />
+            <p>{error}</p>
+          </div>
+        )}
+
         {gameState === GameState.SETUP && (
           <div className="flex-1 flex flex-col items-center justify-center animate-in zoom-in duration-500">
             <div className="bg-hol-red/10 border border-hol-gold/30 p-8 rounded-2xl backdrop-blur-sm max-w-lg w-full shadow-2xl">
@@ -201,25 +215,20 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* LOADING PHASE */}
         {gameState === GameState.LOADING && (
           <div className="flex-1 flex flex-col items-center justify-center">
             <Loader2 className="w-16 h-16 text-hol-gold animate-spin mb-4" />
             <h2 className="text-2xl font-slab font-bold animate-pulse">Asking Santa's Elves (Gemini)...</h2>
-            <p className="text-gray-400 mt-2">Generating categories and clues</p>
+            <p className="text-gray-400 mt-2 text-center">Thinking of clues for "{customTopic}"</p>
           </div>
         )}
 
-        {/* PLAYING PHASE */}
         {gameState === GameState.PLAYING && gameData && (
           <div className="flex-1 flex flex-col animate-in fade-in duration-700">
-            
             <GameBoard 
               data={gameData} 
               onQuestionClick={handleQuestionClick}
             />
-
-            {/* Final Jeopardy Trigger */}
             {checkAllQuestionsAnswered() && (
                <div className="my-6 flex justify-center animate-in bounce-in duration-1000">
                   <button 
@@ -230,15 +239,12 @@ const App: React.FC = () => {
                   </button>
                </div>
             )}
-
             <div className="mt-auto pt-8">
               <ScoreBoard teams={teams} onUpdateScore={handleUpdateScore} />
             </div>
-
           </div>
         )}
 
-        {/* FINAL JEOPARDY */}
         {gameState === GameState.FINAL_JEOPARDY && gameData && (
            <FinalJeopardy 
               data={gameData.finalJeopardy}
@@ -248,12 +254,10 @@ const App: React.FC = () => {
            />
         )}
 
-        {/* GAME OVER */}
         {gameState === GameState.GAME_OVER && (
            <GameOver teams={teams} onRestart={resetGame} />
         )}
 
-        {/* MODAL */}
         {activeQuestion && (
           <ActiveClue 
             question={activeQuestion}
@@ -262,7 +266,6 @@ const App: React.FC = () => {
             onAwardPoints={handleUpdateScore}
           />
         )}
-
       </div>
     </div>
   );
