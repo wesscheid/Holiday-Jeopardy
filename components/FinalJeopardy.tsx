@@ -99,7 +99,7 @@ const FinalJeopardy: React.FC<FinalJeopardyProps> = ({ data, teams, onUpdateScor
                     <Timer className="w-10 h-10" /> {timeLeft}s
                  </div>
               </div>
-              <h2 className="text-3xl md:text-6xl font-slab font-bold text-white leading-tight mb-10 drop-shadow-lg">
+              <h2 className="text-3xl md:text-6xl font-lora text-white leading-tight mb-10 drop-shadow-lg">
                 {data.clue}
               </h2>
               <button 
@@ -116,7 +116,7 @@ const FinalJeopardy: React.FC<FinalJeopardyProps> = ({ data, teams, onUpdateScor
             <div className="animate-in slide-in-from-bottom duration-500">
                <div className="mb-6">
                  <div className="text-hol-gold font-vibes text-4xl mb-6">The Response...</div>
-                 <h1 className="text-3xl md:text-6xl font-montserrat font-semibold text-white bg-green-900/40 p-10 rounded-2xl border-2 border-green-500/30 uppercase tracking-[0.2em] shadow-inner">
+                 <h1 className="text-3xl md:text-6xl font-lora text-white bg-green-900/40 p-10 rounded-2xl border-2 border-green-500/30 uppercase tracking-[0.2em] shadow-inner">
                    {data.answer}
                  </h1>
                </div>

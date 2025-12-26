@@ -98,7 +98,7 @@ const ActiveClue: React.FC<ActiveClueProps> = ({ question, teams, onClose, onAwa
         <div className="flex-1 p-12 flex flex-col items-center justify-center text-center relative bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')]">
           
           <div className="mb-6 w-full">
-            <h2 className="text-3xl md:text-5xl font-slab font-bold text-white leading-tight drop-shadow-lg uppercase">
+            <h2 className="text-3xl md:text-5xl font-lora text-white leading-tight drop-shadow-lg uppercase">
               {question.clue}
             </h2>
           </div>
@@ -123,7 +123,7 @@ const ActiveClue: React.FC<ActiveClueProps> = ({ question, teams, onClose, onAwa
           {showAnswer && (
             <div className="mb-8 animate-in slide-in-from-bottom-4 duration-500">
               <div className="text-hol-gold font-vibes text-4xl mb-3">The Response</div>
-              <h3 className="text-2xl md:text-4xl font-montserrat font-semibold text-yellow-300 uppercase tracking-widest bg-black/30 px-6 py-3 rounded-lg border border-hol-gold/20">
+              <h3 className="text-2xl md:text-4xl font-lora text-yellow-300 uppercase tracking-widest bg-black/30 px-6 py-3 rounded-lg border border-hol-gold/20">
                 {question.answer}
               </h3>
             </div>
