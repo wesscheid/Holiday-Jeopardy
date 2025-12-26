@@ -137,7 +137,6 @@ const App: React.FC = () => {
           <header className="text-center mb-4 relative">
              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-32 bg-red-900/20 blur-3xl rounded-full -z-10"></div>
              
-             {/* Replaced Text Headline with Image - Corrected path casing */}
              <div className="flex justify-center items-center mb-2">
                <img 
                  src="holidayJeopardy.png" 

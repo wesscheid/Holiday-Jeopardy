@@ -1,10 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-// Fix path to types from root
-import { Question, Team } from './types';
-// Fix path and casing to geminiService from root to match the canonical filename 'services/geminiService.ts'
-// Standardized on lowercase 'services' to match imports in App.tsx and other components.
-import { speakText, generateHint } from './services/geminiService';
-import { Timer, Volume2, Eye, Award, XCircle, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
+import { Question, Team } from '../types';
+import { speakText, generateHint } from '../services/geminiService';
+import { Timer, Volume2, Eye, XCircle, Lightbulb, Loader2 } from 'lucide-react';
 
 interface ActiveClueProps {
   question: Question;
@@ -74,7 +71,7 @@ const ActiveClue: React.FC<ActiveClueProps> = ({ question, teams, onClose, onAwa
 
   useEffect(() => {
      handleSpeak();
-  }, []);
+  }, [handleSpeak]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">

@@ -12,7 +12,6 @@ const getClient = () => {
 export const generateGameData = async (customTopic: string = "Christmas Traditions"): Promise<GameData> => {
   try {
     const ai = getClient();
-    // Switched to Flash to resolve 429 Quota issues with Pro model
     const modelId = "gemini-3-flash-preview"; 
 
     const prompt = `Generate a full Jeopardy game board for the topic: "${customTopic}".
@@ -40,7 +39,6 @@ export const generateGameData = async (customTopic: string = "Christmas Traditio
       model: modelId,
       contents: prompt,
       config: {
-        // Disabling thinking budget for Flash to minimize quota usage and latency
         thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
